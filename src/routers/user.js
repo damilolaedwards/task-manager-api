@@ -3,6 +3,7 @@ const multer = require('multer')
 const sharp = require('sharp')
 const User = require('../models/user')
 const auth = require('../middleware/auth')
+const e = require('express')
 const router = new express.Router()
 
 const upload = multer({
@@ -81,7 +82,15 @@ router.post('/users', async (req, res) => {
     })
 
     router.get('/users/me', auth, async (req, res) => {
-        res.send(req.user)
+        try {
+            res.send(req.user)  
+        } catch (error) {
+            res.send({
+             error : 'unable to access user',
+            message : e.message
+            })
+        }
+        
     })
   
   router.patch('/users/me', auth, async (req, res) => {
