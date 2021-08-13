@@ -83,9 +83,7 @@ router.post('/users', async (req, res) => {
 
     router.get('/users/me', auth, async (req, res) => {
         try {
-            res.send({
-                message : 'this is a test'
-            })  
+            res.send()  
         } catch (e) {
             res.send({
              error : 'unable to access user',
