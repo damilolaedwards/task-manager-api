@@ -5,7 +5,11 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "env-cmd -f ./config/dev.env nodemon src/index.js"
+    "dev": "env-cmd -f ./config/dev.env nodemon src/index.js",
+    "test" : "env-cmd -f ./config/test.env jest --watch"
+  },
+  "jest": {
+    "testEnvironment" : "node"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +19,7 @@
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.26.3",
     "express": "^4.17.1",
+    "handlebars": "^4.7.7",
     "jsonwebtoken": "^8.5.1",
     "mongodb": "^4.0.1",
     "mongoose": "^5.13.3",
@@ -24,6 +29,7 @@
   },
   "devDependencies": {
     "env-cmd": "^10.1.0",
+    "jest": "^27.0.6",
     "nodemon": "^2.0.12"
   }
 }
