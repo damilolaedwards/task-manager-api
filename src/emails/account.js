@@ -1,35 +1,36 @@
 const sgMail = require('@sendgrid/mail')
-var handlebars = require('handlebars')
+const handlebars = require('handlebars')
+const fs = require('fs')
+const util = require('util')
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY)
 
-const readHTMLFile = async (email_content) => {
-    try {
-        const path = './views' + email_content + '.html'
-        const file = await fs.readFile(path, {encoding: 'utf-8'}) 
-        return file
-    } catch (error) {
-        return  console.log(error)
-    }
-   
-}
+const readFile = util.promisify(fs.readFile);
 
-const emailToSend = async (content, variables = {}) => {
-    const html = await readHTMLFile(content)
-    const template = await handlebars.compile(html)
-    const replacements = variables
-    const emailContent = template(replacements)
-    return emailContent
+const readHTMLFile = (email_content) => {
+  return readFile(__dirname + '/views/' + email_content + '.html');
 }
 
 
 
-const sendWelcomeEmail = (user) => {
-    const email = await emailToSend('welcome', user)
+const sendWelcomeEmail = async (user) => {
+    const mail_content = await readHTMLFile('welcome')
+    const template  = handlebars.compile(mail_content.toString())
+    const email = template({
+        name: user.name
+   })
     sgMail.send({
-        from : 'hello@greentickets.ng',
+        from : {
+            email : 'hello@greentickets.ng',
+            name : 'Green Tickets'
+        },
         to : 'damilolaedwards@gmail.com',
-        subject : 'Sent from GreenTickets',
-        html : email
+        subject : 'Welcome to GreenTickets',
+        html : email,
+    
+
     })
 }
+
+
+module.exports = {sendWelcomeEmail}

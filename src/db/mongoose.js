@@ -6,5 +6,5 @@ mongoose.connect(process.env.MONGODB_URL, {
     useCreateIndex : true
 })
 
-
+module.exports = mongoose
 

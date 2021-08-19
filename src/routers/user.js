@@ -3,28 +3,18 @@ const multer = require('multer')
 const sharp = require('sharp')
 const User = require('../models/user')
 const auth = require('../middleware/auth')
-const e = require('express')
+const mail = require('../emails/account')
+const cloudinary = require('../utils/cloudinary')
+const upload = require('../utils/multer')
 const router = new express.Router()
 
-const upload = multer({
-    limits : {
-        fileSize : 2000000
-    },
-    fileFilter(req, file, cb){
-        if(!file.mimetype.match(/(jpg|png|jpeg)$/)){
-
-            return cb(new Error('File must be jpg, png or jpeg'))
-           
-        }
-        return cb(undefined, true)
-    }
-})
 
 router.post('/users', async (req, res) => {
     const user = new User(req.body)
     try{
       await user.save()
       const token = await user.generateAuthToken()
+      mail.sendWelcomeEmail(user)
       res.status(201).send({user, token})
   
      }catch(e){
@@ -95,7 +85,7 @@ router.post('/users', async (req, res) => {
   
   router.patch('/users/me', auth, async (req, res) => {
       const updates = Object.keys(req.body)
-      const allowedUpdates = ['name', 'email', 'password', 'age']
+      const allowedUpdates = ['name', 'password', 'age']
       const isValidOperation = updates.every((update) => allowedUpdates.includes(update))
       
       if(!isValidOperation){
@@ -120,7 +110,11 @@ router.post('/users', async (req, res) => {
   
   router.delete('/users/me', auth, async (req, res) => {
       try {
+        if(req.user.cloudinary_id){
+            await cloudinary.uploader.destroy(req.user.cloudinary_id)
+        }
           await req.user.remove()
+          
           res.send(req.user)
   
       } catch (e) {
@@ -132,23 +126,37 @@ router.post('/users', async (req, res) => {
   })
 
   router.post('/users/me/avatar', auth, upload.single('avatar'), async (req, res) => {
-      const buffer = await sharp(req.file.buffer).resize({width : 250, height: 250}).png().toBuffer()
-      req.user.avatar = buffer
+    try {
+        if(req.user.cloudinary_id){
+            await cloudinary.uploader.destroy(req.user.cloudinary_id)
+        }
+      const result = await cloudinary.uploader.upload(req.file.path, {quality: 'auto', folder: 'avatars'})
+      req.user.avatar = result.secure_url
+      req.user.cloudinary_id = result.public_id
       
       await req.user.save()
-      res.send({
-          message : 'image uploaded successfully'
+      res.status(201).send({
+          message : 'image uploaded successfully',
+          avatar : req.user.avatar,
+         
       })
-  }, (error, req, res, next) => {
-      return res.status(400).send({
-        error : 'File upload failed',
-        message : error.message
-      })
+    } catch (e) {
+        return res.status(500).send({
+            error : 'Could not upload image',
+            message : e.message
+        })
+    }    
+  
   })
+
+  
 
   router.delete('/users/me/avatar', auth, async (req, res) => {
       try {
+          
+          await cloudinary.uploader.destroy(req.user.cloudinary_id)
           req.user.avatar = undefined
+          req.user.cloudinary_id = undefined
           await req.user.save()
           res.send({
               message : 'avatar deleted successfully'
@@ -165,17 +173,19 @@ router.post('/users', async (req, res) => {
 
   router.get('/users/:id/avatar', async (req, res) => {
         try {
+            console.log(await User.find({}).exec())
             const user = await User.findById(req.params.id)
 
             if(!user || !user.avatar){
                 throw new Error('resource not found')
             }
-            res.set('content-Type', 'image/png')
-            res.send(user.avatar)
+            res.send({
+                avatar : user.avatar
+            })
         } catch (e) {
             res.status(400).send({
                 error : 'cannot get avatar',
-                message : e
+                message : e.message
             })
         }
 
